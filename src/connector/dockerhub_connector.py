@@ -11,11 +11,11 @@ class DockerHubConnector(BaseConnetor):
         self.organization = self.config['options']['organization']
         self.login()
 
-    def _http_requests(self,url,*,method,payload=None,headers=None):
+    def _http_requests(self, url, *, method, payload=None, headers=None):
          if method == 'post' and payload is None:
               raise Exception('post method requires a payload')
 
-         if (method == 'get' or method == 'delete') and headers is None:
+         if method in ['get', 'delete'] and headers is None:
               raise Exception(f'{method} method requires a headers')
 
          try:
@@ -68,21 +68,13 @@ class DockerHubConnector(BaseConnetor):
 
         return images
 
-    def list_old_tags(self, image):
-        url = f'{self.base_url}/v2/repositories/{self.organization}/{image}/tags/'
-        headers = {
-            'Authorization': 'JWT ' + self.token
-        }
-        response = self._http_requests(url, method='get', headers=headers)
-
-        tag_count = response.get('count')
-        if tag_count < 1:
-            return []
-
-        pages = math.ceil(tag_count / 100)
+    def _get_image_tags(self, image, pages, page_size=100):
         tags = []
         for page in range(1, pages + 1):
-            url = f'{self.base_url}/v2/repositories/{self.organization}/{image}/tags/?page_size=100&page={page}'
+            url = f'{self.base_url}/v2/repositories/{self.organization}/{image}/tags/?page_size={page_size}&page={page}'
+            headers = {
+                'Authorization': 'JWT ' + self.token
+            }
             response = self._http_requests(url, method='get', headers=headers)
 
             if response.get('results'):
@@ -91,7 +83,21 @@ class DockerHubConnector(BaseConnetor):
                     tag['name'] = result['name']
                     tag['tag_last_pushed'] = result['tag_last_pushed']
                     tags.append(tag)
+        
+        return tags
 
+    def list_old_tags(self, image):
+        url = f'{self.base_url}/v2/repositories/{self.organization}/{image}/tags/'
+        headers = {
+            'Authorization': 'JWT ' + self.token
+        }
+        response = self._http_requests(url, method='get', headers=headers)
+        tag_count = response.get('count')
+        if tag_count < 1:
+            return []
+
+        pages = math.ceil(tag_count / 100)
+        tags = self._get_image_tags(image,pages)
         if not tags:
             return []
 
