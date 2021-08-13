@@ -68,26 +68,25 @@ class DockerHubConnector(BaseConnetor):
 
         return images
 
-    def _get_image_tags(self, image, pages, page_size=100):
-        tags = []
-        for page in range(1, pages + 1):
-            url = f'{self.base_url}/v2/repositories/{self.organization}/{image}/tags/?page_size={page_size}&page={page}'
-            headers = {
-                'Authorization': 'JWT ' + self.token
-            }
-            response = self._http_requests(url, method='get', headers=headers)
+    def _get_image_tags(self, image, page=1, page_size=100):
+        url = f'{self.base_url}/v2/repositories/{self.organization}/{image}/tags/?page_size={page_size}&page={page}'
+        headers = {
+            'Authorization': 'JWT ' + self.token
+        }
+        response = self._http_requests(url, method='get', headers=headers)
 
-            if response.get('results'):
-                for result in response['results']:
-                    tag = {}
-                    tag['name'] = result['name']
-                    tag['tag_last_pushed'] = result['tag_last_pushed']
-                    tags.append(tag)
+        tags = []
+        if response.get('results'):
+            for result in response['results']:
+                tag = {}
+                tag['name'] = result['name']
+                tag['tag_last_pushed'] = result['tag_last_pushed']
+                tags.append(tag)
         
         return tags
 
     def list_old_tags(self, image):
-        url = f'{self.base_url}/v2/repositories/{self.organization}/{image}/tags/'
+        url = f'{self.base_url}/v2/repositories/{self.organization}/{image}/tags/?page_size=1'
         headers = {
             'Authorization': 'JWT ' + self.token
         }
@@ -97,7 +96,10 @@ class DockerHubConnector(BaseConnetor):
             return []
 
         pages = math.ceil(tag_count / 100)
-        tags = self._get_image_tags(image,pages)
+        tags = []
+        for page in range(1, pages + 1):
+            tags += self._get_image_tags(image,page)
+
         if not tags:
             return []
 
