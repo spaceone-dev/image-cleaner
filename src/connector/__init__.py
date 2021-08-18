@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from abc import ABC, abstractmethod
+from packaging.version import Version, InvalidVersion
 import fnmatch
 import operator
 import re
@@ -53,12 +54,11 @@ class BaseConnetor(ABC):
 
         return tags_by_policy
 
-    # TODO: fnmatch -> python gitignore parser
     def _get_image_policy(self, image_name, image_rules):
         for rule in image_rules:
             if is_negative_match := re.match('^!',rule['name']):
                 negative_match_pattern = is_negative_match.string[1:]
-                if negative_match_pattern not in image_name:
+                if re.match(f"(?!.*{negative_match_pattern}.*)",image_name):
                     return rule['policy']
             else:
                 if fnmatch.fnmatch(image_name,rule['name']):
@@ -85,20 +85,26 @@ class BaseConnetor(ABC):
             if tag_version == "latest":
                 continue
 
-            # TODO: python version parser
             if version_policy:
                 if not re.fullmatch('^(=|>|<)=?\s[\d.]+',version_policy):
                     raise Exception("Invalid version policy format")
 
                 version_policy_operator = version_policy.split(" ")[0]
                 version_policy_number = version_policy.split(" ")[1]
+                
                 if not ops.get(version_policy_operator):
                     raise Exception("Unsupported operator")
 
-                version_filtering_flag = ops[version_policy_operator](tag_version, version_policy_number)
-                flags.append(version_filtering_flag)
+                try:
+                    comparison_tag_version = Version(tag_version)
+                    comparison_policy_version = Version(version_policy_number)
+                except InvalidVersion:
+                    flags.append(False)
+                else:
+                    version_filtering_flag = ops[version_policy_operator](comparison_tag_version, comparison_policy_version)
+                    flags.append(version_filtering_flag)
 
-            # TODO: python dateparser
+            # TODO: refactoring to python dateparser
             if age_policy:
                 if not re.fullmatch('^(=|>|<)=?\s\d+(d|h|m|s)',age_policy):
                     raise Exception("Invalid age policy format")
