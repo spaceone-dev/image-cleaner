@@ -65,7 +65,7 @@ class BaseConnetor(ABC):
         if rule['name'][:1] == "!":
             is_negative_match = True
 
-        return fnmatch.fnmatch(image_name, rule['name']) == (not is_negative_match)
+        return fnmatch.fnmatch(image_name, rule['name'][1:]) == (not is_negative_match)
 
     def _get_tags_by_policy(self, image_policy, tags):
         age_policy = image_policy.get('age')
@@ -85,14 +85,14 @@ class BaseConnetor(ABC):
             if tag_version == "latest":
                 continue
 
-            flags = []
+            is_matched = []
             if version_policy:
-                result = self._check_version_policy(version_policy, tag_version, ops)
-                flags.append(result)
+                is_matched.append(self._check_version_policy(version_policy, tag_version, ops))
+
             if age_policy:
-                result = self._check_age_policy(age_policy, tag_last_pushed, ops)
-                flags.append(result)
-            if False not in flags:
+                is_matched.append(self._check_age_policy(age_policy, tag_last_pushed, ops))
+
+            if False not in is_matched:
                 result.append(tag_version)
 
         return result
