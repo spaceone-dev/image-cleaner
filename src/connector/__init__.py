@@ -109,13 +109,19 @@ class BaseConnetor(ABC):
         else:
             raise Exception("Invalid version policy format")
 
-        try:
-            tag_version = Version(tag_version)
-            version_policy_number = Version(version_policy_number)
-        except InvalidVersion:
-            return False
+        p = '\d+(?:\.\d+){1,2}'
+        rule = re.compile(p)
+        split_tag_version = rule.match(tag_version)
+
+        if split_tag_version:
+            tag_version = split_tag_version.group()
         else:
-            return ops[version_policy_operator](tag_version, version_policy_number)
+            return False
+
+        tag_version = Version(tag_version)
+        version_policy_number = Version(version_policy_number)
+
+        return ops[version_policy_operator](tag_version, version_policy_number)
 
     def _check_age_policy(self, age_policy, tag_last_pushed, ops):
         p = r'(?P<operator>(=|>|<|>=|<=))' \
