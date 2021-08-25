@@ -99,7 +99,7 @@ class BaseConnetor(ABC):
 
     def _check_version_policy(self, version_policy, tag_version, ops):
         p = r'(?P<operator>^(=|>|<|>=|<=))' \
-            r' (?P<number>[\d.]+)'
+            r' (?P<number>\d+(?:\.\d+){1,2})'
         rule = re.compile(p)
         policy = rule.match(version_policy)
 
