@@ -85,19 +85,15 @@ class BaseConnetor(ABC):
             if tag_version == "latest":
                 continue
 
-            is_matched = []
-            if version_policy:
-                is_matched.append(self._check_version_policy(version_policy, tag_version, ops))
-
-            if age_policy:
-                is_matched.append(self._check_age_policy(age_policy, tag_last_pushed, ops))
-
-            if False not in is_matched:
+            if self._check_version_policy(version_policy, tag_version, ops) and self._check_age_policy(age_policy, tag_last_pushed, ops):
                 result.append(tag_version)
 
         return result
 
     def _check_version_policy(self, version_policy, tag_version, ops):
+        if not version_policy:
+            return True
+
         p = r'(?P<operator>^(=|>|<|>=|<=))' \
             r' (?P<number>\d+(?:\.\d+){1,2})'
         rule = re.compile(p)
@@ -124,6 +120,9 @@ class BaseConnetor(ABC):
         return ops[version_policy_operator](tag_version, version_policy_number)
 
     def _check_age_policy(self, age_policy, tag_last_pushed, ops):
+        if not age_policy:
+            return True
+
         p = r'(?P<operator>(=|>|<|>=|<=))' \
             r' (?P<date_number>\d+)' \
             r'(?P<date_unit>(d|h|m|s)+)'
